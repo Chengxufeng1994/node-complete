@@ -1,0 +1,23 @@
+[
+  {
+    "id": "d532ef69-d0bc-4a86-84da-f6e0f3a7c038",
+    "title": "Light Work",
+    "imageUrl": "https://images.unsplash.com/photo-1484417894907-623942c8ee29?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1489&q=80",
+    "description": "Light Work",
+    "price": "19"
+  },
+  {
+    "id": "62fafc65-e12a-4e78-b941-7af1b8462e5f",
+    "title": "Code & Coffee",
+    "imageUrl": "https://images.unsplash.com/flagged/photo-1563536310477-c7b4e3a800c2?ixlib=rb-1.2.1&auto=format&fit=crop&w=634&q=80",
+    "description": "Code & Coffee",
+    "price": "99"
+  },
+  {
+    "id": "b5434265-5e9c-4741-9512-a2ab55f84007",
+    "title": "Pakata Goh",
+    "imageUrl": "https://images.unsplash.com/photo-1537432376769-00f5c2f4c8d2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=2125&q=80",
+    "description": "What I see daily as I strive to become better as a self taught developer. The journey is a long one, and that’s great because the journey is the awesome part.Enjoy",
+    "price": "69"
+  }
+]
