@@ -3,26 +3,11 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const errorController = require('./controllers/error');
-const sequelize = require('./util/database');
-const Product = require('./models/product');
+const { mongoConnect } = require('./util/database');
 const User = require('./models/user');
-const Cart = require('./models/cart');
-const CartItem = require('./models/cart-item');
-const Order = require('./models/order');
-const OrderItem = require('./models/order-item');
 
 const localhost = '127.0.0.1';
 const port = 3000;
-
-// test sequelize
-// sequelize
-//   .authenticate()
-//   .then(() => {
-//     console.log('Connection has been established successfully.');
-//   })
-//   .catch((error) => {
-//     console.error('Unable to connect to the database:', error);
-//   });
 
 const app = express();
 
@@ -36,9 +21,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((req, res, next) => {
-  User.findByPk(1)
+  User.fetchUser('5f5dc975d61e0e9ad4816497')
     .then((user) => {
-      req.user = user;
+      req.user = new User(user.name, user.email, user.cart, user._id);
       next();
     })
     .catch((error) => {
@@ -51,42 +36,9 @@ app.use(shopRoutes);
 
 app.use(errorController.get404);
 
-// User create Product
-Product.belongsTo(User, { constraints: true, onDelete: 'CASCADE' });
-User.hasMany(Product);
-
-User.hasOne(Cart);
-Cart.belongsTo(User);
-Cart.belongsToMany(Product, { through: CartItem });
-Product.belongsToMany(Cart, { through: CartItem });
-
-Order.belongsTo(User);
-User.hasMany(Order);
-Order.belongsToMany(Product, { through: OrderItem });
-// Product.belongsToMany(Order, { through: OrderItem });
-
-sequelize
-  // .sync({ force: true }) // If force is true, each Model will run DROP TABLE IF EXISTS, before it tries to create its own table
-  .sync()
-  .then((result) => {
-    return User.findByPk(1);
-  })
-  .then((user) => {
-    if (!user) {
-      return User.create({ name: 'Cheng', email: 'Cheng@test.com ' });
-    }
-    return user;
-  })
-  .then((user) => {
-    // console.log(user);
-    return user.createCart();
-  })
-  .then((cart) => {
-    // console.log(cart);
-    app.listen(port, localhost, () => {
-      console.log('Server is listening');
-    });
-  })
-  .catch((err) => {
-    console.log(err);
+mongoConnect((client) => {
+  // console.log(client);
+  app.listen(port, localhost, () => {
+    console.log('Server is listening');
   });
+});

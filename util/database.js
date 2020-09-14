@@ -1,20 +1,35 @@
-const { Sequelize } = require('sequelize');
+const mongodb = require('mongodb');
+const MongoClient = mongodb.MongoClient;
 
-const db_option = {
-  host: 'localhost',
-  user: 'root',
-  password: '1984Saiyan1995',
-  database: 'node-complete',
+let _db;
+
+const uri =
+  'mongodb+srv://Benny:Lxhtmj490i2fFNXh@cluster0.fyfno.mongodb.net/shop?retryWrites=true&w=majority';
+const client = new MongoClient(uri, { useNewUrlParser: true });
+const mongoConnect = (callback) => {
+  client
+    .connect()
+    .then((response) => {
+      console.log('Connected!');
+      _db = client.db();
+      callback();
+    })
+    .catch((error) => {
+      console.log(error);
+      const collection = client.db('test').collection('devices');
+      // perform actions on the collection object
+      client.close();
+      throw error;
+    });
 };
 
-const sequelize = new Sequelize(
-  db_option.database,
-  db_option.user,
-  db_option.password,
-  {
-    host: db_option.host,
-    dialect: 'mysql',
+const getDb = () => {
+  if (_db) {
+    return _db;
   }
-);
 
-module.exports = sequelize;
+  throw 'No database found';
+};
+
+exports.mongoConnect = mongoConnect;
+exports.getDb = getDb;
