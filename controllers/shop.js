@@ -1,10 +1,11 @@
+const { compile } = require('pug');
+const Order = require('../models/order');
 const Product = require('../models/product');
 
 exports.getProducts = (req, res, next) => {
-  console.log('Fetch All Product!!!');
-
-  Product.fetchAll()
+  Product.find()
     .then((products) => {
+      console.log('Fetch All');
       res.render('shop/product-list', {
         prods: products,
         pageTitle: 'All Products',
@@ -19,7 +20,7 @@ exports.getProducts = (req, res, next) => {
 exports.getProduct = (req, res, next) => {
   const { productId } = req.params;
 
-  Product.fetchProduct(productId)
+  Product.findById(productId)
     .then((product) => {
       res.render('shop/product-detail', {
         product: product,
@@ -33,9 +34,9 @@ exports.getProduct = (req, res, next) => {
 };
 
 exports.getIndex = (req, res, next) => {
-  console.log('Fetch All Product!!!');
+  console.log('Fetch All');
 
-  Product.fetchAll()
+  Product.find()
     .then((products) => {
       res.render('shop/index', {
         prods: products,
@@ -50,28 +51,44 @@ exports.getIndex = (req, res, next) => {
 
 exports.getCart = (req, res, next) => {
   req.user
-    .fetchCartItems()
-    .then((cartProducts) => {
-      console.log('Get Cart!!!');
+    .populate('cart.items.productId')
+    .execPopulate()
+    .then((user) => {
+      console.log('Get Cart Items');
+      // console.log(user.cart.items);
       res.render('shop/cart', {
         path: '/cart',
         pageTitle: 'Your Cart',
-        cartProducts,
+        cartProducts: user.cart.items,
       });
     })
     .catch((error) => {
       console.error(error);
     });
+  // req.user
+  //   .fetchCartItems()
+  //   .then((cartProducts) => {
+  //     console.log('Get Cart Items');
+  //     console.log(cartProducts);
+  //     res.render('shop/cart', {
+  //       path: '/cart',
+  //       pageTitle: 'Your Cart',
+  //       cartProducts,
+  //     });
+  //   })
+  //   .catch((error) => {
+  //     console.error(error);
+  //   });
 };
 
 exports.postCart = (req, res, next) => {
   const { productId } = req.body;
-  Product.fetchProduct(productId)
+  Product.findById(productId)
     .then((product) => {
       return req.user.addToCart(product);
     })
     .then((result) => {
-      // console.log(result);
+      console.log(result);
       console.log('Add To Cart!');
       res.redirect('/cart');
     })
@@ -84,8 +101,9 @@ exports.postCartDeleteProduct = (req, res, next) => {
   const { productId } = req.body;
 
   req.user
-    .deleteItemFromCart(productId)
+    .removeFromCart(productId)
     .then((result) => {
+      console.log('Delete item from cart');
       res.redirect('/cart');
     })
     .catch((error) => {
@@ -95,8 +113,30 @@ exports.postCartDeleteProduct = (req, res, next) => {
 
 exports.postOrder = (req, res, next) => {
   req.user
-    .addOrder()
+    .populate('cart.items.productId')
+    .execPopulate()
+    .then((user) => {
+      console.log(user.cart.items);
+      const products = user.cart.items.map((item) => {
+        return {
+          product: { ...item.productId._doc },
+          quantity: item.quantity,
+        };
+      });
+      const order = new Order({
+        products,
+        user: {
+          name: req.user.name,
+          userId: req.user._id,
+        },
+      });
+
+      return order.save();
+    })
     .then((result) => {
+      req.user.resetCart();
+    })
+    .then(() => {
       res.redirect('/orders');
     })
     .catch((error) => {
@@ -105,9 +145,9 @@ exports.postOrder = (req, res, next) => {
 };
 
 exports.getOrders = (req, res, next) => {
-  req.user
-    .fetchOrders()
+  Order.find({ 'user.userId': req.user._id })
     .then((orders) => {
+      console.log(orders);
       res.render('shop/orders', {
         path: '/orders',
         pageTitle: 'Your Orders',
