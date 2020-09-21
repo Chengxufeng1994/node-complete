@@ -1,29 +1,52 @@
 const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
-// Import the mongoose module
 const mongoose = require('mongoose');
+const session = require('express-session');
+// This module exports a single function which takes an instance of connect (or Express) and returns a MongoDBStore class that can be used to store sessions in MongoDB.
+var MongoDBStore = require('connect-mongodb-session')(session);
 
 const errorController = require('./controllers/error');
-const adminRoutes = require('./routes/admin');
+// routes
+const authRoutes = require('./routes/auth');
 const shopRoutes = require('./routes/shop');
+const adminRoutes = require('./routes/admin');
+// models
 const User = require('./models/user');
 
 const localhost = '127.0.0.1';
 const port = 3000;
+// const uri =
+//   'mongodb+srv://Benny:Lxhtmj490i2fFNXh@cluster0.fyfno.mongodb.net/shop?retryWrites=true&w=majority';
 const uri =
-  'mongodb+srv://Benny:Lxhtmj490i2fFNXh@cluster0.fyfno.mongodb.net/shop?retryWrites=true&w=majority';
-
+  'mongodb+srv://Benny:Lxhtmj490i2fFNXh@cluster0.fyfno.mongodb.net/shop';
+const store = new MongoDBStore({
+  uri: uri,
+  collection: 'sessions',
+});
 const app = express();
 
 app.set('view engine', 'ejs');
 app.set('views', 'views');
 
+app.use(
+  session({
+    secret: 'my secret',
+    resave: false,
+    saveUninitialized: true,
+    store: store,
+    // cookie: { secure: true }
+  })
+);
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((req, res, next) => {
-  User.findById('5f60ea94ea780633a41535fd')
+  if (!req.session.user) {
+    return next();
+  }
+  User.findById(req.session.user._id)
     .then((user) => {
       req.user = user;
       next();
@@ -35,6 +58,7 @@ app.use((req, res, next) => {
 
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
+app.use(authRoutes);
 
 app.use(errorController.get404);
 // Set up default mongoose connection
