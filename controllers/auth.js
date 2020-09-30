@@ -1,6 +1,8 @@
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const salt = bcrypt.genSaltSync(12);
 // nodemailer
 const transport = nodemailer.createTransport({
   host: 'smtp.mailtrap.io',
@@ -106,7 +108,6 @@ exports.postSignup = (req, res, next) => {
         return res.redirect('/signup');
       }
 
-      const salt = bcrypt.genSaltSync(12);
       return bcrypt
         .hash(password, salt)
         .then((hashPassword) => {
@@ -136,6 +137,129 @@ exports.postSignup = (req, res, next) => {
         .catch((err) => {
           console.log('line 154: ', err);
         });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.getResetPassword = (req, res, next) => {
+  let message = req.flash('error');
+  if (message.length > 0) {
+    message = message[0];
+  } else {
+    message = null;
+  }
+
+  res.render('auth/reset', {
+    pageTitle: 'Reset Password',
+    path: '/resetpassword',
+    errorMessage: message,
+  });
+};
+
+exports.postResetPassword = (req, res, next) => {
+  console.log('[POST reset password]');
+  const { email } = req.body;
+
+  crypto.randomBytes(32, function (err, buffer) {
+    if (err) {
+      console.log(err);
+      return res.redirect('/resetpassword');
+    }
+    const token = buffer.toString('hex');
+    User.findOne({ email: email })
+      .then((user) => {
+        if (!user) {
+          req.flash(
+            'error',
+            'Email is NOT exists, No account with that email found.'
+          );
+          return res.redirect('/resetpassword');
+        }
+        user.resetToken = token;
+        user.resetTokenExpiration = Date.now() + 3600000;
+
+        return user.save();
+      })
+      .then((result) => {
+        res.redirect('/login');
+        const mailOptions = {
+          from: '"Node-complete Team" <shop@node-complete.com>',
+          to: email,
+          subject: 'Reset Password',
+          text: 'Hey there, it’s our first message sent with Nodemailer ',
+          html: `
+          <h1>You request a password reset!</h1>
+          <p>Click this <a href="http://localhost:3000/resetpassword/${token}">link</a> to set New Password!</p>`,
+        };
+
+        return transport.sendMail(mailOptions);
+      })
+      .then((info) => {
+        console.log('Message sent: %s', info.messageId);
+      })
+      .catch((err) => {
+        console.log('line 154: ', err);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  });
+};
+
+exports.getNewPassword = (req, res, next) => {
+  console.log('[GET New Password]');
+  const token = req.params.token;
+  User.findOne({
+    resetToken: token,
+    resetTokenExpiration: { $gt: Date.now() },
+  })
+    .then((user) => {
+      let message = req.flash('error');
+      if (message.length > 0) {
+        message = message[0];
+      } else {
+        message = null;
+      }
+      res.render('auth/newpassword', {
+        pageTitle: 'New password',
+        path: '/new-assword',
+        errorMessage: message,
+        userId: user._id.toString(),
+        passwordToken: token,
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.postNewPassword = (req, res, next) => {
+  console.log('[POST New Password]');
+  const { userId, password: newpassword, passwordToken } = req.body;
+  let resetUser;
+
+  User.findOne({
+    _id: userId,
+    resetToken: passwordToken,
+    resetTokenExpiration: { $gt: Date.now() },
+  })
+    .then((user) => {
+      resetUser = user;
+      return bcrypt.hash(newpassword, salt);
+      // user.password = newpassword;
+      // return user.save();
+    })
+    .then((hashPassword) => {
+      resetUser.password = hashPassword;
+      resetUser.resetToken = undefined;
+      resetUser.resetTokenExpiration = undefined;
+
+      return resetUser.save();
+    })
+    .then((result) => {
+      res.redirect('/login');
     })
     .catch((err) => {
       console.log(err);
