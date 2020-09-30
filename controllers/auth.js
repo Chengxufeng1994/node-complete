@@ -1,5 +1,15 @@
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
+// nodemailer
+const transport = nodemailer.createTransport({
+  host: 'smtp.mailtrap.io',
+  port: 2525,
+  auth: {
+    user: '97dd3280293c10',
+    pass: 'b1eb7aa22648df',
+  },
+});
 
 exports.getLogin = (req, res, next) => {
   // const isLoggedIn = req.get('Cookie').split('=')[1] === 'true';
@@ -110,6 +120,21 @@ exports.postSignup = (req, res, next) => {
         })
         .then((result) => {
           res.redirect('/login');
+          const mailOptions = {
+            from: '"Node-complete Team" <shop@node-complete.com>',
+            to: email,
+            subject: 'Sign up succeeded!',
+            text: 'Hey there, it’s our first message sent with Nodemailer ',
+            html: '<h1>Hey there!</h1><h2>You successfully signed up!</h2>',
+          };
+
+          return transport.sendMail(mailOptions);
+        })
+        .then((info) => {
+          console.log('Message sent: %s', info.messageId);
+        })
+        .catch((err) => {
+          console.log('line 154: ', err);
         });
     })
     .catch((err) => {
