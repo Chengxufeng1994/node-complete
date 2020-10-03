@@ -16,6 +16,7 @@ const shopRoutes = require('./routes/shop');
 const adminRoutes = require('./routes/admin');
 // models
 const User = require('./models/user');
+const { ppid } = require('process');
 // setup route middlewares
 const csrfProtection = csrf({ cookie: true });
 
@@ -50,20 +51,6 @@ app.use(cookieParser());
 app.use(csrfProtection);
 app.use(flash());
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.use((req, res, next) => {
-  if (!req.session.user) {
-    return next();
-  }
-  User.findById(req.session.user._id)
-    .then((user) => {
-      req.user = user;
-      next();
-    })
-    .catch((error) => {
-      console.log(error);
-    });
-});
 // locals是Express應用中 Application(app)對象和Response(res)對象中的屬性，該屬性是一個對象。該對象的主要作用是，將值傳遞到所渲染的模板中。
 app.use((req, res, next) => {
   res.locals.isAuthenticated = req.session.isLoggedIn;
@@ -71,14 +58,42 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  // throw new Error('Sync Dummy');
+  if (!req.session.user) {
+    return next();
+  }
+  User.findById(req.session.user._id)
+    .then((user) => {
+      // throw new Error('Async Dummy');
+      req.user = user;
+      next();
+    })
+    .catch((err) => {
+      // throw new Error(err);
+      next(new Error(err));
+    });
+});
+
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
 
+app.get('/500', errorController.get500);
 app.use(errorController.get404);
+app.use((err, req, res, next) => {
+  console.error(err);
+  // res.render(error.httpStatusCoder).render(...);
+  // res.redirect('/500');
+  res.status(500).render('500', {
+    pageTitle: 'Error!',
+    path: '/500',
+    isAuthenticated: req.session.isLoggedIn,
+  });
+});
 // Set up default mongoose connection
 mongoose
-  .connect(uri)
+  .connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then((result) => {
     // User.findOne().then((user) => {
     //   if (!user) {

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Product = require('../models/product');
 const { validationResult } = require('express-validator');
 
@@ -48,6 +49,7 @@ exports.postAddProduct = (req, res, next) => {
   }
 
   const product = new Product({
+    // _id: mongoose.Types.ObjectId('5f7732397193545703339210'),
     title: title,
     imageUrl: imageUrl,
     price: price,
@@ -61,7 +63,13 @@ exports.postAddProduct = (req, res, next) => {
       console.log('Create Product');
       res.redirect('/admin/products');
     })
-    .catch((error) => console.log(error));
+    .catch((err) => {
+      // http status 500 => server side error
+      // res.redirect('/500');
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error)
+    });
 };
 
 exports.getEditProduct = (req, res, next) => {
@@ -89,8 +97,10 @@ exports.getEditProduct = (req, res, next) => {
         validationErrors: [],
       });
     })
-    .catch((error) => {
-      console.log(error);
+    .catch((err) => {
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error)
     });
 };
 
@@ -150,8 +160,10 @@ exports.postEditProduct = (req, res, next) => {
       console.log('Update Product');
       res.redirect('/admin/products');
     })
-    .catch((error) => {
-      console.log(error);
+    .catch((err) => {
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error)
     });
 };
 
@@ -167,8 +179,10 @@ exports.postDeleteProduct = (req, res, next) => {
       console.log('Delete product');
       res.redirect('/admin/products');
     })
-    .catch((error) => {
-      console.log(error.message);
+    .catch((err) => {
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error)
     });
 
   // Product.deleteProduct(productId)
