@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Product = require('../models/product');
 const { validationResult } = require('express-validator');
+const fileHepler = require('../util/file');
 
 exports.getAddProduct = (req, res, next) => {
   if (!req.session.isLoggedIn) {
@@ -25,10 +26,27 @@ exports.getAddProduct = (req, res, next) => {
 
 exports.postAddProduct = (req, res, next) => {
   const title = req.body.title;
-  const imageUrl = req.body.imageUrl;
+  const image = req.file;
   const price = req.body.price;
   const description = req.body.description;
   const errors = validationResult(req);
+
+  if (!image) {
+    // return res.status(400).json({ errors: errors.array() });
+    return res.status(422).render('admin/edit-product', {
+      pageTitle: 'Add Product',
+      path: '/admin/add-product',
+      editing: false,
+      hasError: true,
+      errorMessage: 'Attached file is not an image.',
+      product: {
+        title: title,
+        price: price,
+        description: description,
+      },
+      validationErrors: [],
+    });
+  }
 
   if (!errors.isEmpty()) {
     // return res.status(400).json({ errors: errors.array() });
@@ -47,6 +65,7 @@ exports.postAddProduct = (req, res, next) => {
       validationErrors: errors.array(),
     });
   }
+  const imageUrl = image.path;
 
   const product = new Product({
     // _id: mongoose.Types.ObjectId('5f7732397193545703339210'),
@@ -68,7 +87,7 @@ exports.postAddProduct = (req, res, next) => {
       // res.redirect('/500');
       const error = new Error(err);
       error.httpStatusCode = 500;
-      return next(error)
+      return next(error);
     });
 };
 
@@ -100,12 +119,13 @@ exports.getEditProduct = (req, res, next) => {
     .catch((err) => {
       const error = new Error(err);
       error.httpStatusCode = 500;
-      return next(error)
+      return next(error);
     });
 };
 
 exports.postEditProduct = (req, res, next) => {
-  const { productId, title, imageUrl, price, description } = req.body;
+  const { productId, title, price, description } = req.body;
+  const image = req.file;
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -118,7 +138,6 @@ exports.postEditProduct = (req, res, next) => {
       errorMessage: errors.array()[0].msg,
       product: {
         title: title,
-        imageUrl: imageUrl,
         price: price,
         description: description,
         _id: productId,
@@ -127,54 +146,61 @@ exports.postEditProduct = (req, res, next) => {
     });
   }
 
-  // Product.findById(productId)
-  //   .then((product) => {
-  //     if (product.userId.toString() !== req.user._id.toString()) {
-  //       return res.redirect('/');
-  //     }
-  //     product.title = title;
-  //     product.imageUrl = imageUrl;
-  //     product.price = price;
-  //     product.description = description;
+  Product.findById(productId)
+    .then((product) => {
+      if (product.userId.toString() !== req.user._id.toString()) {
+        return res.redirect('/');
+      }
+      product.title = title;
+      product.price = price;
+      product.description = description;
 
-  //     return product.save().then((result) => {
-  //       console.log('Update Product');
-  //       res.redirect('/admin/products');
-  //     });
-  //   })
-  //   .catch((error) => {
-  //     console.log(error);
-  //   });
+      if (image) {
+        fileHepler.deleteFile(product.imageUrl);
+        product.imageUrl = image.path;
+      }
+
+      return product.save().then((result) => {
+        console.log('Update Product');
+        res.redirect('/admin/products');
+      });
+    })
+    .catch((error) => {
+      console.log(error);
+    });
 
   // My Method
-  Product.updateOne(
-    { _id: productId, userId: req.user._id },
-    {
-      title: title,
-      imageUrl: imageUrl,
-      price: price,
-      description: description,
-    }
-  )
-    .then(() => {
-      console.log('Update Product');
-      res.redirect('/admin/products');
-    })
-    .catch((err) => {
-      const error = new Error(err);
-      error.httpStatusCode = 500;
-      return next(error)
-    });
+  // Product.updateOne(
+  //   { _id: productId, userId: req.user._id },
+  //   {
+  //     title: title,
+  //     imageUrl: imageUrl,
+  //     price: price,
+  //     description: description,
+  //   }
+  // )
+  //   .then(() => {
+  //     console.log('Update Product');
+  //     res.redirect('/admin/products');
+  //   })
+  //   .catch((err) => {
+  //     const error = new Error(err);
+  //     error.httpStatusCode = 500;
+  //     return next(error);
+  //   });
 };
 
 exports.postDeleteProduct = (req, res, next) => {
   const { productId } = req.body;
+  Product.findById(productId)
+    .then((product) => {
+      if (!product) {
+        return next(new Error('Product not found'));
+      }
 
-  // Product.findByIdAndRemove({ _id: productId })
-  Product.deleteOne({ _id: productId, userId: req.user._id })
-    // .then(() => {
-    //   return req.user.deleteItemFromCart(productId);
-    // })
+      fileHepler.deleteFile(product.imageUrl);
+      return Product.deleteOne({ _id: productId, userId: req.user._id });
+    })
     .then((result) => {
       console.log('Delete product');
       res.redirect('/admin/products');
@@ -182,8 +208,8 @@ exports.postDeleteProduct = (req, res, next) => {
     .catch((err) => {
       const error = new Error(err);
       error.httpStatusCode = 500;
-      return next(error)
-    });
+      return next(error);
+    })
 
   // Product.deleteProduct(productId)
   //   .then(() => {
