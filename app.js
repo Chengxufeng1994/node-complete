@@ -19,7 +19,7 @@ const adminRoutes = require('./routes/admin');
 const User = require('./models/user');
 
 const localhost = '127.0.0.1';
-const port = 3001;
+const port = 3000;
 // const uri =
 //   'mongodb+srv://Benny:Lxhtmj490i2fFNXh@cluster0.fyfno.mongodb.net/shop?retryWrites=true&w=majority';
 const uri =

@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
+const stripe = require('stripe')(
+  'sk_test_51HaHFeEhzIaLgzH1tXIqt7hH3oxUcqDfHrhvMZL3nxaWnW0IMbL4i2friChhLYlw170kKUMQQGf5NYy5fCaVm80k00XK1pjqCs'
+);
 
 const Order = require('../models/order');
 const Product = require('../models/product');
@@ -96,12 +99,12 @@ exports.getIndex = (req, res, next) => {
 };
 
 exports.getCart = (req, res, next) => {
+  console.log('[Get Cart Items]');
+
   req.user
     .populate('cart.items.productId')
     .execPopulate()
     .then((user) => {
-      console.log('Get Cart Items');
-      // console.log(user.cart.items);
       res.render('shop/cart', {
         path: '/cart',
         pageTitle: 'Your Cart',
@@ -113,20 +116,6 @@ exports.getCart = (req, res, next) => {
       error.httpStatusCode = 500;
       return next(error);
     });
-  // req.user
-  //   .fetchCartItems()
-  //   .then((cartProducts) => {
-  //     console.log('Get Cart Items');
-  //     console.log(cartProducts);
-  //     res.render('shop/cart', {
-  //       path: '/cart',
-  //       pageTitle: 'Your Cart',
-  //       cartProducts,
-  //     });
-  //   })
-  //   .catch((error) => {
-  //     console.error(error);
-  //   });
 };
 
 exports.postCart = (req, res, next) => {
@@ -155,6 +144,93 @@ exports.postCartDeleteProduct = (req, res, next) => {
     .then((result) => {
       console.log('Delete item from cart');
       res.redirect('/cart');
+    })
+    .catch((err) => {
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
+    });
+};
+
+exports.getCheckout = (req, res, next) => {
+  console.log('[Get Checkoout]');
+  let cartProducts;
+  let totalSum = 0;
+
+  req.user
+    .populate('cart.items.productId')
+    .execPopulate()
+    .then((user) => {
+      cartProducts = user.cart.items;
+      totalSum = cartProducts.reduce((acc, curr) => {
+        return (
+          acc + parseFloat(curr.productId.price) * parseFloat(curr.quantity)
+        );
+      }, 0);
+
+      return stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: cartProducts.map((cartProduct) => {
+          return {
+            name: cartProduct.productId.title,
+            description: cartProduct.productId.description,
+            amount: cartProduct.productId.price * 100,
+            currency: 'usd',
+            quantity: cartProduct.quantity,
+          };
+        }),
+        mode: 'payment',
+        success_url: `${req.protocol}://${req.get('host')}/checkout/success`, // => http://localhost:3000
+        cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`, // => http://localhost:3000
+      });
+    })
+    .then((session) => {
+      res.render('shop/checkout', {
+        path: '/checkout',
+        pageTitle: 'Checkout',
+        cartProducts,
+        totalSum,
+        sessionId: session.id,
+      });
+    })
+    .catch((err) => {
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
+    });
+};
+
+exports.postCheckout = (req, res, next) => {
+  res.redirect('/checkout');
+};
+
+exports.getCheckoutSuccess = (req, res, next) => {
+  req.user
+    .populate('cart.items.productId')
+    .execPopulate()
+    .then((user) => {
+      console.log(user.cart.items);
+      const products = user.cart.items.map((item) => {
+        return {
+          product: { ...item.productId._doc },
+          quantity: item.quantity,
+        };
+      });
+      const order = new Order({
+        products,
+        user: {
+          email: req.user.email,
+          userId: req.user._id,
+        },
+      });
+
+      return order.save();
+    })
+    .then((result) => {
+      req.user.resetCart();
+    })
+    .then(() => {
+      res.redirect('/orders');
     })
     .catch((err) => {
       const error = new Error(err);
@@ -281,11 +357,4 @@ exports.getInvoice = (req, res, next) => {
       // file.pipe(res);
     })
     .catch((err) => next(err));
-};
-
-exports.getCheckout = (req, res, next) => {
-  res.render('shop/checkout', {
-    path: '/checkout',
-    pageTitle: 'Checkout',
-  });
 };

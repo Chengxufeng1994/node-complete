@@ -233,6 +233,7 @@ exports.deleteProduct = (req, res, next) => {
       }
 
       fileHepler.deleteFile(product.imageUrl);
+      req.user.removeFromCart(productId)
       return Product.deleteOne({ _id: productId, userId: req.user._id });
     })
     .then((result) => {

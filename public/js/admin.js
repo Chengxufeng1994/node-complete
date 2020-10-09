@@ -1,5 +1,5 @@
 async function handleDeleteProduct(btn) {
-  console.log('[handle Delete Product]', btn);
+  console.log('[handle Delete Product]');
   const productId = btn.parentNode.querySelector('[name=productId]').value;
   const _csrf = btn.parentNode.querySelector('[name=_csrf]').value;
 
@@ -13,14 +13,19 @@ async function handleDeleteProduct(btn) {
     },
     method: 'DELETE', // *GET, POST, PUT, DELETE, etc.
   })
-    .then((result) => {
-      return result.json();
+    .then((response) => {
+      return response.json().then((json) => {
+        if (response.ok) {
+          return Promise.resolve(json);
+        }
+        return Promise.reject(json);
+      });
     })
     .then((data) => {
       console.log(data);
       productElement.parentNode.removeChild(productElement);
     })
     .catch((err) => {
-      console.log(err);
+      console.error(err.message);
     });
 }
