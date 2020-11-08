@@ -1,8 +1,12 @@
 const path = require('path');
+const fs = require('fs');
+
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
-const helmet = require("helmet");
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
 const mongoose = require('mongoose');
 const session = require('express-session');
 // This module exports a single function which takes an instance of connect (or Express) and returns a MongoDBStore class that can be used to store sessions in MongoDB.
@@ -21,10 +25,7 @@ const User = require('./models/user');
 
 const localhost = '127.0.0.1';
 const port = process.env.PORT || 3000;
-
-const uri =
-  `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.fyfno.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority`;
-
+const uri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.fyfno.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority`;
 const app = express();
 const store = new MongoDBStore({
   uri: uri,
@@ -59,11 +60,16 @@ const fileFilter = function (req, file, cb) {
   // You can always pass an error if something goes wrong:
   // cb(new Error("I don't have a clue!"));
 };
+const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' })
 
 app.set('view engine', 'ejs');
 app.set('views', 'views');
 // helmet
 app.use(helmet());
+// compression
+app.use(compression());
+// morgan
+app.use(morgan('combined', { stream: accessLogStream }));
 // parse cookies
 // we need this because "cookie" is true in csrfProtection
 app.use(bodyParser.urlencoded({ extended: false }));
