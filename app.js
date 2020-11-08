@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -33,6 +34,10 @@ const store = new MongoDBStore({
 });
 // const csrfProtection = csrf({ cookie: true });
 const csrfProtection = csrf();
+// openssl req -nodes -new -x509 -keyout server.key -out server.cert
+const privateKey = fs.readFileSync('server.key');
+const certificate = fs.readFileSync('server.cert');
+
 const fileStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'images');
@@ -60,7 +65,10 @@ const fileFilter = function (req, file, cb) {
   // You can always pass an error if something goes wrong:
   // cb(new Error("I don't have a clue!"));
 };
-const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' })
+const accessLogStream = fs.createWriteStream(
+  path.join(__dirname, 'access.log'),
+  { flags: 'a' }
+);
 
 app.set('view engine', 'ejs');
 app.set('views', 'views');
@@ -137,6 +145,10 @@ app.use((err, req, res, next) => {
 mongoose
   .connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then((result) => {
+    // https.createServer(
+    //   { key: privateKey, cert: certificate },
+    //   app
+    // )
     app.listen(port, localhost, () => {
       console.log(`Server is listening at http://localhost:${port}`);
     });
