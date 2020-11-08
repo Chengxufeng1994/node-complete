@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const https = require('https');
+// const https = require('https');
 
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -24,7 +24,7 @@ const adminRoutes = require('./routes/admin');
 // models
 const User = require('./models/user');
 
-const localhost = '127.0.0.1';
+const host = '0.0.0.0';
 const port = process.env.PORT || 3000;
 const uri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.fyfno.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority`;
 const app = express();
@@ -35,8 +35,8 @@ const store = new MongoDBStore({
 // const csrfProtection = csrf({ cookie: true });
 const csrfProtection = csrf();
 // openssl req -nodes -new -x509 -keyout server.key -out server.cert
-const privateKey = fs.readFileSync('server.key');
-const certificate = fs.readFileSync('server.cert');
+// const privateKey = fs.readFileSync('server.key');
+// const certificate = fs.readFileSync('server.cert');
 
 const fileStorage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -149,7 +149,7 @@ mongoose
     //   { key: privateKey, cert: certificate },
     //   app
     // )
-    app.listen(port, localhost, () => {
+    app.listen(port, host, () => {
       console.log(`Server is listening at http://localhost:${port}`);
     });
   })
