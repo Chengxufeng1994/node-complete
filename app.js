@@ -2,6 +2,7 @@ const path = require('path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
+const helmet = require("helmet");
 const mongoose = require('mongoose');
 const session = require('express-session');
 // This module exports a single function which takes an instance of connect (or Express) and returns a MongoDBStore class that can be used to store sessions in MongoDB.
@@ -19,11 +20,10 @@ const adminRoutes = require('./routes/admin');
 const User = require('./models/user');
 
 const localhost = '127.0.0.1';
-const port = 3000;
-// const uri =
-//   'mongodb+srv://Benny:Lxhtmj490i2fFNXh@cluster0.fyfno.mongodb.net/shop?retryWrites=true&w=majority';
+const port = process.env.PORT || 3000;
+
 const uri =
-  'mongodb+srv://Benny:Lxhtmj490i2fFNXh@cluster0.fyfno.mongodb.net/shop';
+  `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.fyfno.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority`;
 
 const app = express();
 const store = new MongoDBStore({
@@ -62,7 +62,8 @@ const fileFilter = function (req, file, cb) {
 
 app.set('view engine', 'ejs');
 app.set('views', 'views');
-
+// helmet
+app.use(helmet());
 // parse cookies
 // we need this because "cookie" is true in csrfProtection
 app.use(bodyParser.urlencoded({ extended: false }));
